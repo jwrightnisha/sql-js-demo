@@ -180,4 +180,315 @@
       text-align: left;
     }
     th {
-      background
+      background: #f3f4f6;
+      font-weight: 600;
+    }
+    tr:nth-child(even) td {
+      background: #f9fafb;
+    }
+    code {
+      font-family: var(--mono);
+      font-size: 0.85rem;
+      background: #f3f4f6;
+      padding: 2px 5px;
+      border-radius: 4px;
+    }
+    .mini-note {
+      font-size: 0.8rem;
+      color: var(--muted);
+      margin-top: 6px;
+    }
+    .sidebar h3 {
+      margin-top: 0;
+      font-size: 1.05rem;
+    }
+    .sidebar section { margin-bottom: 14px; }
+    .sidebar ul {
+      margin: 6px 0 0 18px;
+      padding: 0;
+      font-size: 0.85rem;
+      color: var(--muted);
+    }
+    .sidebar li { margin-bottom: 4px; }
+    .kbd {
+      display: inline-block;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      padding: 2px 6px;
+      font-size: 0.75rem;
+      background: #f9fafb;
+      font-family: var(--mono);
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <!-- LEFT: Editor & results -->
+    <div class="card">
+      <h1>
+        SQL + JavaScript
+        <span class="badge">SQLite in the browser</span>
+      </h1>
+      <p class="subtitle">
+        Type one or more SQL statements below and click <strong>Run</strong>.  
+        All queries run against an in-memory SQLite database in your browser.
+      </p>
+
+      <div class="row">
+        <div class="pill">
+          <span class="icon">🎓</span>
+          <span>Try: <code>SELECT * FROM students;</code></span>
+        </div>
+      </div>
+
+      <label for="sql">SQL statements</label>
+      <textarea id="sql">
+-- Example setup (you can edit this)
+DROP TABLE IF EXISTS students;
+
+CREATE TABLE students (
+  id    INTEGER PRIMARY KEY,
+  name  TEXT,
+  grade INTEGER
+);
+
+INSERT INTO students (name, grade) VALUES
+  ('Alice', 85),
+  ('Bob', 92),
+  ('Carlos', 76),
+  ('Deepa', 88);
+
+-- Try modifying this query:
+SELECT * FROM students;
+      </textarea>
+
+      <div class="row" style="margin-top: 10px;">
+        <button id="runBtn">▶ Run SQL</button>
+        <button id="resetBtn" class="secondary">⟳ Reset DB</button>
+        <button id="saveBtn" class="secondary">💾 Save DB</button>
+        <button id="loadBtn" class="secondary">📂 Load DB</button>
+        <span class="mini-note">
+          Save creates a <code>.sqlite</code> file you can load next time.
+        </span>
+      </div>
+
+      <!-- Hidden file input for loading DB -->
+      <input type="file" id="fileInput" accept=".sqlite,.db,application/octet-stream" style="display:none;" />
+
+      <div style="margin-top: 18px;">
+        <div class="results-header">
+          <h2>Results</h2>
+          <div class="status">
+            <span class="dot"></span>
+            <span id="statusText">Loading database engine…</span>
+          </div>
+        </div>
+        <div id="message"></div>
+        <div id="results"></div>
+      </div>
+    </div>
+
+    <!-- RIGHT: Explanations / teacher prompts -->
+    <div class="card sidebar">
+      <h3>How this ties into JavaScript</h3>
+      <section>
+        <p style="font-size:0.9rem; color:var(--muted);">
+          Under the hood, the browser is running SQLite via WebAssembly.  
+          Your JavaScript code:
+        </p>
+        <ul>
+          <li>Creates the database object: <code>const db = new SQL.Database();</code></li>
+          <li>Executes SQL with <code>db.exec(sql)</code></li>
+          <li>Reads the result rows and builds an HTML table dynamically.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h4 style="font-size:0.9rem; margin-bottom:4px;">Try this with students:</h4>
+        <ul>
+          <li>Have them add a new student using <code>INSERT</code>.</li>
+          <li>Filter rows: <code>SELECT * FROM students WHERE grade &gt;= 80;</code></li>
+          <li>Sort: <code>ORDER BY grade DESC;</code></li>
+          <li>Compute a class average using <code>AVG(grade)</code>.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h4 style="font-size:0.9rem; margin-bottom:4px;">Saving & loading</h4>
+        <ul>
+          <li>End of class: click <strong>Save DB</strong> and keep the <code>.sqlite</code> file.</li>
+          <li>Next class: click <strong>Load DB</strong> and choose that file.</li>
+          <li>Everything—tables and data—is restored exactly.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h4 style="font-size:0.9rem; margin-bottom:4px;">Keyboard tips</h4>
+        <ul>
+          <li>Use <span class="kbd">Ctrl</span> + <span class="kbd">A</span> → <span class="kbd">Delete</span> to clear.</li>
+          <li>Use <span class="kbd">Ctrl</span> + <span class="kbd">Z</span> to undo changes in the SQL box.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h4 style="font-size:0.9rem; margin-bottom:4px;">Ideas for assignments</h4>
+        <ul>
+          <li>“Movie library” with title, year, and rating.</li>
+          <li>“Course enrollment” with <code>students</code>, <code>courses</code>, <code>enrolments</code>.</li>
+          <li>“Inventory” for a small store, with quantities and prices.</li>
+        </ul>
+        <p class="mini-note">
+          Students can submit screenshots of queries + results, or upload their
+          <code>.sqlite</code> file to D2L for you to inspect.
+        </p>
+      </section>
+    </div>
+  </div>
+
+  <script>
+    let db;
+    let SQLGlobal;
+
+    const statusText = document.getElementById('statusText');
+    const messageEl = document.getElementById('message');
+    const resultsDiv = document.getElementById('results');
+    const sqlBox = document.getElementById('sql');
+    const runBtn = document.getElementById('runBtn');
+    const resetBtn = document.getElementById('resetBtn');
+    const saveBtn = document.getElementById('saveBtn');
+    const loadBtn = document.getElementById('loadBtn');
+    const fileInput = document.getElementById('fileInput');
+
+    function setMessage(text, type = '') {
+      messageEl.textContent = text;
+      messageEl.className = type ? type : '';
+    }
+
+    function renderTable(res) {
+      const cols = res.columns;
+      const rows = res.values;
+      let html = '<table><thead><tr>';
+      cols.forEach(c => html += `<th>${c}</th>`);
+      html += '</tr></thead><tbody>';
+      rows.forEach(row => {
+        html += '<tr>';
+        row.forEach(val => html += `<td>${val}</td>`);
+        html += '</tr>';
+      });
+      html += '</tbody></table>';
+      return html;
+    }
+
+    function executeSQL() {
+      const sql = sqlBox.value.trim();
+      resultsDiv.innerHTML = '';
+      if (!sql) {
+        setMessage('No SQL to run. Type one or more statements first.', 'error');
+        return;
+      }
+
+      try {
+        const result = db.exec(sql); // array of result sets
+        if (result.length === 0) {
+          setMessage('Statement(s) executed successfully. (No result sets to display.)', 'ok');
+        } else {
+          const tablesHtml = result.map(renderTable).join('');
+          resultsDiv.innerHTML = tablesHtml;
+          setMessage(`Executed successfully. ${result.length} result set(s) returned.`, 'ok');
+        }
+      } catch (err) {
+        console.error(err);
+        setMessage('Error: ' + err.message, 'error');
+      }
+    }
+
+    function initDatabase() {
+      db = new SQLGlobal.Database();
+      setMessage('Fresh in-memory database created.', 'ok');
+      resultsDiv.innerHTML = '';
+      statusText.textContent = 'Database loaded (new, in memory)';
+    }
+
+    function saveDatabase() {
+      if (!db) {
+        setMessage('No database to save.', 'error');
+        return;
+      }
+      try {
+        const binaryArray = db.export(); // Uint8Array
+        const blob = new Blob([binaryArray], { type: 'application/octet-stream' });
+
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'sqljs-database.sqlite';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+
+        setMessage('Database exported as sqljs-database.sqlite. Save it somewhere safe.', 'ok');
+      } catch (err) {
+        console.error(err);
+        setMessage('Error saving database: ' + err.message, 'error');
+      }
+    }
+
+    function loadDatabaseFromFile(file) {
+      const reader = new FileReader();
+      reader.onload = function (e) {
+        try {
+          const uInt8Array = new Uint8Array(e.target.result);
+          db = new SQLGlobal.Database(uInt8Array);
+          resultsDiv.innerHTML = '';
+          setMessage('Database loaded from file: ' + file.name, 'ok');
+          statusText.textContent = 'Database loaded from file';
+        } catch (err) {
+          console.error(err);
+          setMessage('Error loading database: ' + err.message, 'error');
+        }
+      };
+      reader.onerror = function () {
+        setMessage('Could not read file.', 'error');
+      };
+      reader.readAsArrayBuffer(file);
+    }
+
+    // Initialize sql.js and database
+    initSqlJs({
+      locateFile: file => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.2/${file}`
+    }).then(SQL => {
+      SQLGlobal = SQL;
+      initDatabase();
+    }).catch(err => {
+      console.error(err);
+      statusText.textContent = 'Failed to load database engine';
+      setMessage('Could not load sql.js. Check your internet connection.', 'error');
+    });
+
+    runBtn.addEventListener('click', executeSQL);
+
+    resetBtn.addEventListener('click', () => {
+      if (!SQLGlobal) return;
+      initDatabase();
+    });
+
+    saveBtn.addEventListener('click', saveDatabase);
+
+    loadBtn.addEventListener('click', () => {
+      if (!SQLGlobal) {
+        setMessage('Database engine is still loading. Try again in a moment.', 'error');
+        return;
+      }
+      fileInput.value = ''; // reset so same file can be chosen twice
+      fileInput.click();
+    });
+
+    fileInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return; // user cancelled
+      loadDatabaseFromFile(file);
+    });
+  </script>
+</body>
+</html>
